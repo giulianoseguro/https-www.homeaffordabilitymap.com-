@@ -1,0 +1,403 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Sensitivity Analysis</title>
+    
+    <!-- Google AdSense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8982708382636496"
+         crossorigin="anonymous"></script>
+    
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Custom styles for the application */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+        }
+
+        /* Style for the sticky table headers */
+        #table-container {
+            max-height: 85vh; /* Limit height to enable vertical scrolling */
+            overflow: auto;   /* Enable scrolling */
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        #sensitivity-table th {
+            position: sticky;
+            background-color: #f1f5f9; /* Light gray background for headers */
+            z-index: 10;
+            font-weight: 600;
+        }
+
+        /* Header row (Interest Rates) */
+        #sensitivity-table thead th {
+            top: 0;
+        }
+
+        /* Header column (Home Price) */
+        #sensitivity-table tbody th {
+            left: 0;
+            z-index: 20; /* Must be above other cells */
+        }
+
+        /* Top-left corner cell */
+        #sensitivity-table thead th:first-child {
+            top: 0;
+            left: 0;
+            z-index: 30; /* Must be on top of all other headers */
+        }
+
+        /* Ensure numbers in the table are aligned */
+        #sensitivity-table td, #sensitivity-table th {
+            font-variant-numeric: tabular-nums;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            text-align: right;
+            min-width: 130px; /* Give cells a minimum width */
+        }
+        
+        #sensitivity-table tbody th {
+            min-width: 150px; /* Wider for home prices */
+        }
+
+        /* Form input styling */
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+            box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            font-size: 0.875rem; /* text-sm */
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+    <div class="container max-w-screen-xl mx-auto p-4 md:p-8">
+        
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Mortgage Sensitivity Analysis</h1>
+            <p class="text-lg text-gray-600">See how your monthly payment changes with home price and interest rate.</p>
+        </header>
+
+        <!-- Section for constant inputs -->
+        <div id="inputs" class="bg-white p-4 md:p-6 rounded-lg shadow-md mb-6">
+            <form id="calc-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    
+                    <!-- Down Payment Type -->
+                    <div>
+                        <label class="form-label">Down Payment Type</label>
+                        <div class="flex items-center gap-4 p-2 border rounded-md bg-gray-50">
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" id="dpTypePercent" name="dpType" value="percent" class="form-radio" checked>
+                                Percent
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" id="dpTypeAmount" name="dpType" value="amount" class="form-radio">
+                                Amount
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Down Payment Value -->
+                    <div>
+                        <label for="downPaymentValue" id="dpValueLabel" class="form-label">Down Payment (%)</label>
+                        <input type="number" id="downPaymentValue" class="form-input" value="20">
+                    </div>
+
+                    <!-- Available Funds -->
+                    <div>
+                        <label for="availableFunds" class="form-label">Available Funds ($)</label>
+                        <input type="number" id="availableFunds" class="form-input" step="1000" value="100000">
+                    </div>
+
+                    <!-- Remaining Funds (Display) -->
+                    <div>
+                        <label class="form-label">Remaining Funds ($)</label>
+                        <div id="remainingFunds" class="form-input bg-gray-100 text-gray-700 h-[38px] flex items-center">
+                            N/A
+                        </div>
+                    </div>
+
+                    <!-- Loan Term -->
+                    <div>
+                        <label for="loanTerm" class="form-label">Loan Term (Years)</label>
+                        <input type="number" id="loanTerm" class="form-input" value="30">
+                    </div>
+
+                    <!-- Property Tax Rate -->
+                    <div>
+                        <label for="taxRate" class="form-label">Annual Tax Rate (%)</label>
+                        <input type="number" id="taxRate" class="form-input" step="0.1" value="2.1">
+                    </div>
+
+                    <!-- Homeowners Insurance -->
+                    <div>
+                        <label for="insurance" class="form-label">Annual Insurance ($)</label>
+                        <input type="number" id="insurance" class="form-input" step="100" value="2200">
+                    </div>
+
+                    <!-- HOA Dues -->
+                    <div>
+                        <label for="hoa" class="form-label">Monthly HOA ($)</label>
+                        <input type="number" id="hoa" class="form-input" step="10" value="50">
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <button type="button" id="generateBtn" class="w-full lg:w-auto mt-6 bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow hover:bg-blue-700 transition-colors duration-200">
+                    Generate Table
+                </button>
+            </form>
+        </div>
+
+        <!-- Container for the dynamically generated table -->
+        <div id="table-container">
+            <!-- JavaScript will render the table here -->
+            <p class="p-8 text-center text-gray-500">Click "Generate Table" to see your results.</p>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const generateBtn = document.getElementById('generateBtn');
+        const tableContainer = document.getElementById('table-container');
+        
+        // Input Fields
+        const dpTypeRadios = document.querySelectorAll('input[name="dpType"]');
+        const dpValueLabel = document.getElementById('dpValueLabel');
+        const downPaymentValueEl = document.getElementById('downPaymentValue');
+        const availableFundsEl = document.getElementById('availableFunds');
+        const remainingFundsEl = document.getElementById('remainingFunds');
+        const loanTermEl = document.getElementById('loanTerm');
+        const taxRateEl = document.getElementById('taxRate');
+        const insuranceEl = document.getElementById('insurance');
+        const hoaEl = document.getElementById('hoa');
+
+        // --- Event Listeners ---
+        generateBtn.addEventListener('click', generateTable);
+
+        // Update Down Payment label when radio changes
+        dpTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'percent') {
+                    dpValueLabel.textContent = 'Down Payment (%)';
+                } else {
+                    dpValueLabel.textContent = 'Down Payment ($)';
+                }
+                updateRemainingFunds(); // Update remaining funds on type change
+            });
+        });
+
+        // Add listeners to update remaining funds
+        availableFundsEl.addEventListener('input', updateRemainingFunds);
+        downPaymentValueEl.addEventListener('input', updateRemainingFunds);
+
+        // Generate table on initial page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateRemainingFunds(); // Calculate remaining funds on load
+            generateBtn.click();
+        });
+
+        /**
+         * Updates the 'Remaining Funds' display field.
+         */
+        function updateRemainingFunds() {
+            const downPaymentType = document.querySelector('input[name="dpType"]:checked').value;
+            
+            if (downPaymentType === 'amount') {
+                const available = parseFloat(availableFundsEl.value) || 0;
+                const downPayment = parseFloat(downPaymentValueEl.value) || 0;
+                const remaining = available - downPayment;
+                remainingFundsEl.textContent = formatCurrency(remaining);
+            } else {
+                remainingFundsEl.textContent = 'N/A';
+            }
+        }
+
+
+        // --- Core Table Generation Function ---
+        function generateTable() {
+            // 1. Get all constant input values
+            const downPaymentValue = parseFloat(downPaymentValueEl.value) || 0;
+            const downPaymentType = document.querySelector('input[name="dpType"]:checked').value;
+            const loanTermYears = parseFloat(loanTermEl.value) || 30;
+            const taxRate = parseFloat(taxRateEl.value) || 0;
+            const annualInsurance = parseFloat(insuranceEl.value) || 0;
+            const monthlyHoa = parseFloat(hoaEl.value) || 0;
+
+            // 2. Define the table ranges
+            const homePrices = [];
+            for (let price = 50000; price <= 2000000; price += 25000) {
+                homePrices.push(price);
+            }
+
+            const interestRates = [];
+            for (let rate = 2.0; rate <= 12.0; rate += 0.5) {
+                // Use toFixed to avoid floating point issues, then convert back to number
+                interestRates.push(parseFloat(rate.toFixed(2)));
+            }
+
+            // 3. First Pass: Calculate all payment values to find min/max
+            let tableData = [];
+            let minPayment = Infinity;
+            let maxPayment = -Infinity;
+
+            for (const price of homePrices) {
+                let rowData = [];
+                for (const rate of interestRates) {
+                    const payment = calculateMonthlyPayment(
+                        price,
+                        downPaymentValue,
+                        downPaymentType,
+                        rate,
+                        loanTermYears,
+                        taxRate,
+                        annualInsurance,
+                        monthlyHoa
+                    );
+                    rowData.push(payment);
+                    
+                    if (payment < minPayment) minPayment = payment;
+                    if (payment > maxPayment) maxPayment = payment;
+                }
+                tableData.push(rowData);
+            }
+
+            // 4. Second Pass: Build the HTML string for the table
+            let html = '<table id="sensitivity-table" class="w-full border-collapse text-sm">';
+            
+            // Build Header Row (Interest Rates)
+            html += '<thead><tr>';
+            html += '<th class="sticky top-0 left-0 z-30 bg-gray-200">Home Price</th>';
+            for (const rate of interestRates) {
+                html += `<th class="sticky top-0 z-10 bg-gray-200">${rate.toFixed(2)}%</th>`;
+            }
+            html += '</tr></thead>';
+
+            // Build Body Rows (Home Prices & Payments)
+            html += '<tbody>';
+            for (let i = 0; i < homePrices.length; i++) {
+                const price = homePrices[i];
+                html += '<tr>';
+                
+                // Sticky Header Column Cell (Home Price)
+                html += `<th class="sticky left-0 z-20 bg-gray-200">${formatCurrency(price)}</th>`;
+                
+                // Data Cells (Monthly Payment)
+                for (let j = 0; j < interestRates.length; j++) {
+                    const payment = tableData[i][j];
+                    const color = getHeatmapColor(payment, minPayment, maxPayment);
+                    
+                    html += `<td style="background-color: ${color};">${formatCurrency(payment)}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+
+            // 5. Inject the generated HTML into the container
+            tableContainer.innerHTML = html;
+        }
+
+        /**
+         * Calculates the total estimated monthly payment.
+         */
+        function calculateMonthlyPayment(
+            homePrice, downPaymentValue, downPaymentType, 
+            interestRate, loanTermYears, taxRate, 
+            annualInsurance, monthlyHoa
+        ) {
+            // --- Calculate Loan Amount ---
+            let loanAmount;
+            if (downPaymentType === 'percent') {
+                loanAmount = homePrice * (1 - (downPaymentValue / 100));
+            } else {
+                loanAmount = homePrice - downPaymentValue;
+            }
+
+            // Handle cases with 100%+ down payment
+            if (loanAmount <= 0) {
+                loanAmount = 0;
+            }
+
+            // --- Calculate P&I (Principal & Interest) ---
+            const monthlyInterestRate = (interestRate / 100) / 12;
+            const numPayments = loanTermYears * 12;
+            let pAndI = 0;
+
+            if (loanAmount > 0 && monthlyInterestRate > 0) {
+                const numerator = monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numPayments);
+                const denominator = Math.pow(1 + monthlyInterestRate, numPayments) - 1;
+                pAndI = loanAmount * (numerator / denominator);
+            } else if (loanAmount > 0) {
+                // Handle 0% interest rate case
+                pAndI = loanAmount / numPayments;
+            }
+
+            // --- Calculate Other Monthly Costs ---
+            const monthlyTax = (homePrice * (taxRate / 100)) / 12;
+            const monthlyInsurance = annualInsurance / 12;
+
+            // --- Return Total ---
+            return pAndI + monthlyTax + monthlyInsurance + monthlyHoa;
+        }
+
+        /**
+         * Calculates a heatmap color (Green-Yellow-Red) based on a value's position
+         * between a min and max.
+         */
+        function getHeatmapColor(value, min, max) {
+            // Handle division by zero if all values are the same
+            if (min === max) {
+                return 'hsl(120, 90%, 85%)'; // Default to green
+            }
+
+            // Calculate percentage position (0.0 to 1.0)
+            const percent = (value - min) / (max - min);
+
+            // Interpolate hue from Green (120) to Red (0)
+            // As percent goes from 0 to 1, hue goes from 120 to 0
+            const hue = 120 * (1 - percent);
+            
+            // Use HSL for easy color interpolation
+            // We use high lightness (85%) for a pastel/pale look
+            return `hsl(${hue}, 90%, 85%)`;
+        }
+
+        /**
+         * Formats a number as U.S. currency (e.g., $1,234)
+         */
+        function formatCurrency(value) {
+            return value.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                maximumFractionDigits: 0, // No cents for a cleaner table
+                minimumFractionDigits: 0,
+            });
+        }
+
+    </script>
+</body>
+</html>
