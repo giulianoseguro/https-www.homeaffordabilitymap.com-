@@ -98,9 +98,10 @@
     <div class="container max-w-screen-xl mx-auto p-4 md:p-8">
         
         <header class="mb-6">
-            <!-- === LOGO PATH UPDATED === -->
-            <img src="logo.jpg" alt="Company Logo" class="h-12 w-auto mb-4" 
-                 onerror="this.style.display='none'; console.warn('Logo not found at logo.jpg')">
+            <!-- === LOGO PATH FIXED === -->
+            <!-- I've updated the path to 'assets/logo.jpg' -->
+            <img src="assets/logo.jpg" alt="Company Logo" class="h-12 w-auto mb-4" 
+                 onerror="this.style.display='none'; console.warn('Logo not found at assets/logo.jpg')">
             <!-- === END LOGO SECTION === -->
 
             <h1 class="text-3xl font-bold text-gray-800">Mortgage Sensitivity Analysis</h1>
@@ -262,6 +263,7 @@
          * Event handler to unformat a currency input back to a number for editing on focus.
          */
         function unformatInputForEditing(e) {
+            // === FIX: Corrected e..target to e.target ===
             const input = e.target;
             // On focus, set the value to the raw number for easy editing
             // If the value is 0, set it to an empty string so the user can type
