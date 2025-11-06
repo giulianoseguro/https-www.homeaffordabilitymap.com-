@@ -32,7 +32,7 @@
         /* Style for the sticky table headers */
         #table-container {
             max-height: 85vh; /* Limit height to enable vertical scrolling */
-            overflow: auto;   /* Enable scrolling */
+            overflow: auto;    /* Enable scrolling */
             border-radius: 0.5rem;
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -66,14 +66,14 @@
         /* Ensure numbers in the table are aligned */
         #sensitivity-table td, #sensitivity-table th {
             font-variant-numeric: tabular-nums;
-            padding: 0.5rem 0.75rem;
+            padding: 0.5rem 0.25rem; /* Further reduced horizontal padding */
             border: 1px solid #e2e8f0;
             text-align: right;
-            min-width: 130px; /* Give cells a minimum width */
+            min-width: 80px; /* Further reduced min-width */
         }
         
         #sensitivity-table tbody th {
-            min-width: 150px; /* Wider for home prices */
+            min-width: 100px; /* Further reduced min-width for home prices */
         }
 
         /* Form input styling */
@@ -111,7 +111,15 @@
                     <!-- Available Funds -->
                     <div>
                         <label for="availableFunds" class="form-label">Available Funds ($)</label>
-                        <input type="number" id="availableFunds" class="form-input" step="1000" value="100000">
+                        <!-- **** FIX: Changed type="number" to type="text" and added inputmode="decimal" **** -->
+                        <input type="text" inputmode="decimal" id="availableFunds" class="form-input" value="100000">
+                    </div>
+
+                    <!-- Down Payment Value (Simplified) -->
+                    <div>
+                        <label for="downPaymentValue" class="form-label">Down Payment ($)</label>
+                        <!-- **** FIX: Changed type="number" to type="text" and added inputmode="decimal" **** -->
+                        <input type="text" inputmode="decimal" id="downPaymentValue" class="form-input" value="50000">
                     </div>
 
                     <!-- Remaining Funds (Display) -->
@@ -120,12 +128,6 @@
                         <div id="remainingFunds" class="form-input bg-gray-100 text-gray-700 h-[38px] flex items-center">
                             N/A
                         </div>
-                    </div>
-
-                    <!-- Down Payment Value (Simplified) -->
-                    <div>
-                        <label for="downPaymentValue" class="form-label">Down Payment ($)</label>
-                        <input type="number" id="downPaymentValue" class="form-input" value="50000" step="1000">
                     </div>
 
                     <!-- NEW: Start Rate -->
@@ -214,18 +216,66 @@
         // ALWAYS call updateRemainingFunds when the DP value changes.
         downPaymentValueEl.addEventListener('input', updateRemainingFunds);
 
+        // NEW: Add focus/blur listeners for currency formatting
+        availableFundsEl.addEventListener('focus', unformatInputForEditing);
+        availableFundsEl.addEventListener('blur', formatInputAsCurrency);
+        downPaymentValueEl.addEventListener('focus', unformatInputForEditing);
+        downPaymentValueEl.addEventListener('blur', formatInputAsCurrency);
+
         // Generate table on initial page load
         document.addEventListener('DOMContentLoaded', () => {
+            // NEW: Format initial values on load
+            availableFundsEl.value = formatCurrency(parseCurrency(availableFundsEl.value));
+            downPaymentValueEl.value = formatCurrency(parseCurrency(downPaymentValueEl.value));
+
             updateRemainingFunds(); // Calculate remaining funds on load
             generateBtn.click();
         });
+        
+        // --- NEW: Currency Formatting Helpers ---
+
+        /**
+         * Parses a currency string (e.g., "$100,000") into a number (100000).
+         */
+        function parseCurrency(value) {
+            if (typeof value === 'number') {
+                return value;
+            }
+            // Remove '$' and ',' characters before parsing
+            return parseFloat(String(value).replace(/[$,]/g, ''));
+        }
+
+        /**
+         * Event handler to format an input's value as currency on blur.
+         */
+        function formatInputAsCurrency(e) {
+            const input = e.target;
+            const value = parseCurrency(input.value) || 0;
+            // Use the existing formatCurrency function to set the display value
+            input.value = formatCurrency(value);
+        }
+
+        /**
+         * Event handler to unformat a currency input back to a number for editing on focus.
+         */
+        function unformatInputForEditing(e) {
+            const input = e.target;
+            // On focus, set the value to the raw number for easy editing
+            // If the value is 0, set it to an empty string so the user can type
+            const value = parseCurrency(input.value);
+            input.value = value === 0 ? '' : value;
+        }
+
+        // --- End Currency Formatting Helpers ---
+
 
         /**
          * Updates the 'Remaining Funds' display field.
          */
         function updateRemainingFunds() {
-            const available = parseFloat(availableFundsEl.value) || 0;
-            const downPayment = parseFloat(downPaymentValueEl.value) || 0;
+            // Use the new parseCurrency helper to read values
+            const available = parseCurrency(availableFundsEl.value) || 0;
+            const downPayment = parseCurrency(downPaymentValueEl.value) || 0;
             const remaining = available - downPayment;
             remainingFundsEl.textContent = formatCurrency(remaining);
         }
@@ -234,7 +284,8 @@
         // --- Core Table Generation Function ---
         function generateTable() {
             // 1. Get all constant input values
-            const downPaymentValue = parseFloat(downPaymentValueEl.value) || 0;
+            // Use the new parseCurrency helper to read the down payment
+            const downPaymentValue = parseCurrency(downPaymentValueEl.value) || 0;
             const loanTermYears = parseFloat(loanTermEl.value) || 30;
             const taxRate = parseFloat(taxRateEl.value) || 0;
             const annualInsurance = parseFloat(insuranceEl.value) || 0;
