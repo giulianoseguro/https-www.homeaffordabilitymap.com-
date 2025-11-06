@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -103,29 +105,9 @@
         <!-- Section for constant inputs -->
         <div id="inputs" class="bg-white p-4 md:p-6 rounded-lg shadow-md mb-6">
             <form id="calc-form">
+                <!-- Updated grid layout -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                     
-                    <!-- Down Payment Type -->
-                    <div>
-                        <label class="form-label">Down Payment Type</label>
-                        <div class="flex items-center gap-4 p-2 border rounded-md bg-gray-50">
-                            <label class="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" id="dpTypePercent" name="dpType" value="percent" class="form-radio" checked>
-                                Percent
-                            </label>
-                            <label class="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" id="dpTypeAmount" name="dpType" value="amount" class="form-radio">
-                                Amount
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Down Payment Value -->
-                    <div>
-                        <label for="downPaymentValue" id="dpValueLabel" class="form-label">Down Payment (%)</label>
-                        <input type="number" id="downPaymentValue" class="form-input" value="20">
-                    </div>
-
                     <!-- Available Funds -->
                     <div>
                         <label for="availableFunds" class="form-label">Available Funds ($)</label>
@@ -138,6 +120,30 @@
                         <div id="remainingFunds" class="form-input bg-gray-100 text-gray-700 h-[38px] flex items-center">
                             N/A
                         </div>
+                    </div>
+
+                    <!-- Down Payment Value (Simplified) -->
+                    <div>
+                        <label for="downPaymentValue" class="form-label">Down Payment ($)</label>
+                        <input type="number" id="downPaymentValue" class="form-input" value="50000" step="1000">
+                    </div>
+
+                    <!-- NEW: Start Rate -->
+                    <div>
+                        <label for="startRate" class="form-label">Start Rate (%)</label>
+                        <input type="number" id="startRate" class="form-input" step="0.1" value="2.0">
+                    </div>
+
+                    <!-- NEW: End Rate -->
+                    <div>
+                        <label for="endRate" class="form-label">End Rate (%)</label>
+                        <input type="number" id="endRate" class="form-input" step="0.1" value="12.0">
+                    </div>
+
+                    <!-- NEW: Rate Increment -->
+                    <div>
+                        <label for="rateIncrement" class="form-label">Rate Increment (%)</label>
+                        <input type="number" id="rateIncrement" class="form-input" step="0.1" value="0.5">
                     </div>
 
                     <!-- Loan Term -->
@@ -186,8 +192,6 @@
         const tableContainer = document.getElementById('table-container');
         
         // Input Fields
-        const dpTypeRadios = document.querySelectorAll('input[name="dpType"]');
-        const dpValueLabel = document.getElementById('dpValueLabel');
         const downPaymentValueEl = document.getElementById('downPaymentValue');
         const availableFundsEl = document.getElementById('availableFunds');
         const remainingFundsEl = document.getElementById('remainingFunds');
@@ -195,24 +199,19 @@
         const taxRateEl = document.getElementById('taxRate');
         const insuranceEl = document.getElementById('insurance');
         const hoaEl = document.getElementById('hoa');
+        
+        // NEW: Rate fields
+        const startRateEl = document.getElementById('startRate');
+        const endRateEl = document.getElementById('endRate');
+        const rateIncrementEl = document.getElementById('rateIncrement');
 
         // --- Event Listeners ---
         generateBtn.addEventListener('click', generateTable);
 
-        // Update Down Payment label when radio changes
-        dpTypeRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.value === 'percent') {
-                    dpValueLabel.textContent = 'Down Payment (%)';
-                } else {
-                    dpValueLabel.textContent = 'Down Payment ($)';
-                }
-                updateRemainingFunds(); // Update remaining funds on type change
-            });
-        });
-
         // Add listeners to update remaining funds
         availableFundsEl.addEventListener('input', updateRemainingFunds);
+        
+        // ALWAYS call updateRemainingFunds when the DP value changes.
         downPaymentValueEl.addEventListener('input', updateRemainingFunds);
 
         // Generate table on initial page load
@@ -225,16 +224,10 @@
          * Updates the 'Remaining Funds' display field.
          */
         function updateRemainingFunds() {
-            const downPaymentType = document.querySelector('input[name="dpType"]:checked').value;
-            
-            if (downPaymentType === 'amount') {
-                const available = parseFloat(availableFundsEl.value) || 0;
-                const downPayment = parseFloat(downPaymentValueEl.value) || 0;
-                const remaining = available - downPayment;
-                remainingFundsEl.textContent = formatCurrency(remaining);
-            } else {
-                remainingFundsEl.textContent = 'N/A';
-            }
+            const available = parseFloat(availableFundsEl.value) || 0;
+            const downPayment = parseFloat(downPaymentValueEl.value) || 0;
+            const remaining = available - downPayment;
+            remainingFundsEl.textContent = formatCurrency(remaining);
         }
 
 
@@ -242,11 +235,15 @@
         function generateTable() {
             // 1. Get all constant input values
             const downPaymentValue = parseFloat(downPaymentValueEl.value) || 0;
-            const downPaymentType = document.querySelector('input[name="dpType"]:checked').value;
             const loanTermYears = parseFloat(loanTermEl.value) || 30;
             const taxRate = parseFloat(taxRateEl.value) || 0;
             const annualInsurance = parseFloat(insuranceEl.value) || 0;
             const monthlyHoa = parseFloat(hoaEl.value) || 0;
+
+            // Get new rate values
+            const startRate = parseFloat(startRateEl.value) || 2.0;
+            const endRate = parseFloat(endRateEl.value) || 12.0;
+            const rateIncrement = parseFloat(rateIncrementEl.value) || 0.5;
 
             // 2. Define the table ranges
             const homePrices = [];
@@ -254,10 +251,21 @@
                 homePrices.push(price);
             }
 
+            // Generate interest rates based on user input
             const interestRates = [];
-            for (let rate = 2.0; rate <= 12.0; rate += 0.5) {
+            if (rateIncrement <= 0) { // Safety check to prevent infinite loops
+                tableContainer.innerHTML = '<p class="p-8 text-center text-red-600">Rate Increment must be greater than 0.</p>';
+                return;
+            }
+            for (let rate = startRate; rate <= endRate; rate += rateIncrement) {
                 // Use toFixed to avoid floating point issues, then convert back to number
                 interestRates.push(parseFloat(rate.toFixed(2)));
+            }
+            
+            // Handle case where no rates are generated
+            if (interestRates.length === 0) {
+                tableContainer.innerHTML = '<p class="p-8 text-center text-gray-500">Please check your rate inputs.</p>';
+                return;
             }
 
             // 3. First Pass: Calculate all payment values to find min/max
@@ -271,7 +279,6 @@
                     const payment = calculateMonthlyPayment(
                         price,
                         downPaymentValue,
-                        downPaymentType,
                         rate,
                         loanTermYears,
                         taxRate,
@@ -325,17 +332,12 @@
          * Calculates the total estimated monthly payment.
          */
         function calculateMonthlyPayment(
-            homePrice, downPaymentValue, downPaymentType, 
+            homePrice, downPaymentValue, 
             interestRate, loanTermYears, taxRate, 
             annualInsurance, monthlyHoa
         ) {
             // --- Calculate Loan Amount ---
-            let loanAmount;
-            if (downPaymentType === 'percent') {
-                loanAmount = homePrice * (1 - (downPaymentValue / 100));
-            } else {
-                loanAmount = homePrice - downPaymentValue;
-            }
+            let loanAmount = homePrice - downPaymentValue;
 
             // Handle cases with 100%+ down payment
             if (loanAmount <= 0) {
