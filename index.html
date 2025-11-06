@@ -98,6 +98,11 @@
     <div class="container max-w-screen-xl mx-auto p-4 md:p-8">
         
         <header class="mb-6">
+            <!-- === LOGO PATH UPDATED === -->
+            <img src="logo.jpg" alt="Company Logo" class="h-12 w-auto mb-4" 
+                 onerror="this.style.display='none'; console.warn('Logo not found at logo.jpg')">
+            <!-- === END LOGO SECTION === -->
+
             <h1 class="text-3xl font-bold text-gray-800">Mortgage Sensitivity Analysis</h1>
             <p class="text-lg text-gray-600">See how your monthly payment changes with home price and interest rate.</p>
         </header>
@@ -111,14 +116,12 @@
                     <!-- Available Funds -->
                     <div>
                         <label for="availableFunds" class="form-label">Available Funds ($)</label>
-                        <!-- **** FIX: Changed type="number" to type="text" and added inputmode="decimal" **** -->
                         <input type="text" inputmode="decimal" id="availableFunds" class="form-input" value="100000">
                     </div>
 
                     <!-- Down Payment Value (Simplified) -->
                     <div>
                         <label for="downPaymentValue" class="form-label">Down Payment ($)</label>
-                        <!-- **** FIX: Changed type="number" to type="text" and added inputmode="decimal" **** -->
                         <input type="text" inputmode="decimal" id="downPaymentValue" class="form-input" value="50000">
                     </div>
 
